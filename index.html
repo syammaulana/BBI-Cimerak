@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>BBI Cimerak - Penjualan Benih Ikan</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #e0f0ff 0%, #c8e2f7 100%); padding: 30px 20px; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .main-header { text-align: center; margin-bottom: 30px; }
+        .main-header h1 { font-size: 2rem; font-weight: 700; color: #0a4b6e; }
+        .main-header h1 i { color: #2a9d8f; margin-right: 10px; }
+        .main-header p { color: #2c6e8f; margin-top: 8px; }
+        .card { background: rgba(255,255,255,0.96); border-radius: 28px; box-shadow: 0 20px 35px -12px rgba(0,0,0,0.15); margin-bottom: 28px; overflow: hidden; border: 1px solid rgba(255,255,255,0.5); }
+        .card-header { background: linear-gradient(98deg, #0f5b8c 0%, #1b7aaa 100%); padding: 18px 24px; }
+        .card-header h2, .card-header h3 { color: white; font-weight: 600; font-size: 1.4rem; display: flex; align-items: center; gap: 10px; }
+        .card-header h2 i, .card-header h3 i { color: #ffd966; }
+        .card-body { padding: 24px; }
+        .form-row { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; }
+        .form-group { flex: 1; min-width: 150px; }
+        label { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: #1f6390; margin-bottom: 6px; display: block; }
+        input, select { width: 100%; padding: 12px 14px; border: 1.5px solid #e2edf2; border-radius: 18px; font-size: 0.9rem; background: #fefefe; }
+        input:focus, select:focus { outline: none; border-color: #2a9d8f; box-shadow: 0 0 0 3px rgba(42,157,143,0.2); }
+        .input-group { display: flex; align-items: center; }
+        .input-group span { background: #eef5fa; padding: 12px 14px; border: 1.5px solid #e2edf2; border-left: none; border-radius: 0 18px 18px 0; font-size: 0.85rem; font-weight: 500; color: #2c6e8f; }
+        .btn { border: none; border-radius: 40px; padding: 12px 20px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        .btn-warning { background: #ffb74d; color: #2d3e50; }
+        .btn-warning:hover { background: #ffa726; }
+        .btn-success { background: linear-gradient(98deg, #1e8f5e 0%, #157f50 100%); color: white; }
+        .btn-success:hover { background: #0f6e46; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-info:hover { background: #138496; }
+        .add-cart-btn, .submit-btn { width: 100%; padding: 14px; font-size: 1rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #eef2fa; color: #1f6390; padding: 12px 8px; font-weight: 700; }
+        td { padding: 10px 8px; border-bottom: 1px solid #e0edf2; }
+        .grand-total-box { background: #e6f4f1; border-radius: 28px; padding: 16px 24px; text-align: right; font-weight: 800; font-size: 1.4rem; color: #c44536; margin-top: 20px; }
+        .stats-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 25px; }
+        .stat-card { flex: 1; background: #f8f9fa; border-radius: 24px; padding: 20px; text-align: center; border: 1px solid #dee2e6; }
+        .stat-card i { font-size: 2rem; color: #1b7aaa; margin-bottom: 10px; }
+        .stat-card .stat-value { font-size: 1.8rem; font-weight: 800; color: #0a4b6e; }
+        .stat-card .stat-label { font-size: 0.8rem; color: #2c6e8f; text-transform: uppercase; }
+        .filter-bar { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 25px; background: #f0f7fc; padding: 15px 20px; border-radius: 32px; }
+        .filter-bar .form-group { margin-bottom: 0; }
+        .chart-container { max-width: 100%; margin: 20px 0; }
+        canvas { max-height: 300px; }
+        .action-btns button { background: white; border: 1px solid #cbdbe0; border-radius: 30px; padding: 6px 12px; font-size: 0.75rem; cursor: pointer; margin: 2px; }
+        .delete-btn { color: #d9534f; border-color: #f5c6cb; }
+        .print-btn { color: #17a2b8; }
+        .pdf-btn { color: #6f42c1; }
+        #areaNota { display: none !important; }
+        @media print {
+            body { background: white; margin: 0; padding: 0; }
+            .container { display: none !important; }
+            #areaNota { display: block !important; position: static !important; width: 80mm !important; margin: 0 auto; font-family: 'Courier New', Courier, monospace !important; background: white; padding: 8px; }
+            #areaNota .nota-header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 8px; }
+            #areaNota .nota-header h3 { margin: 0; font-size: 14px; }
+            #areaNota .nota-header p { margin: 3px 0; font-size: 10px; }
+            #areaNota .nota-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
+            #areaNota .nota-item-title { font-weight: bold; }
+            #areaNota .nota-item-detail { display: flex; justify-content: space-between; padding-left: 5px; }
+            #areaNota .nota-footer { text-align: center; border-top: 2px dashed #000; padding-top: 6px; margin-top: 8px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="main-header">
+        <h1><i class="fas fa-fish"></i> BBI Cimerak</h1>
+        <p>Dinas Kelautan, Perikanan & Ketahanan Pangan Kab. Pangandaran</p>
+    </div>
+
+    <!-- 1. Informasi Transaksi -->
+    <div class="card">
+        <div class="card-header"><h2><i class="fas fa-receipt"></i> 1. Informasi Transaksi</h2></div>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group"><label>Tanggal</label><input type="date" id="tanggal" required></div>
+                <div class="form-group"><label>Kasir / Petugas</label><input type="text" id="namaPenjual" placeholder="Nama petugas"></div>
+                <div class="form-group"><label>Pembeli</label><input type="text" id="namaPembeli" placeholder="Nama pelanggan"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Tambah Produk -->
+    <div class="card">
+        <div class="card-header"><h2><i class="fas fa-cart-plus"></i> 2. Tambah Produk</h2></div>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group"><label>Jenis Ikan</label><select id="jenisIkan" onchange="updateUkuran()"><option value="">-- Pilih Ikan --</option><option value="Ikan Nila">Ikan Nila</option><option value="Ikan Mas">Ikan Mas</option><option value="Ikan Lele">Ikan Lele</option><option value="Ikan Gurame">Ikan Gurame</option><option value="Ikan Patin">Ikan Patin</option><option value="Ikan Tawes">Ikan Tawes</option><option value="Ikan Nilem">Ikan Nilem</option></select></div>
+                <div class="form-group"><label>Ukuran</label><select id="ukuranIkan" onchange="updateHargaDanSatuan()"><option value="">-- Pilih Ukuran --</option></select></div>
+            </div>
+            <div class="form-group" style="margin-bottom:20px"><label>Harga Dasar</label><input type="text" id="hargaDasarTampil" readonly placeholder="Rp 0"><input type="hidden" id="hargaDasar"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Kuantitas</label><div class="input-group"><input type="number" id="jumlah" oninput="hitungTotal()" min="1"><span id="satuanSpan">Satuan</span></div></div>
+                <div class="form-group"><label>Total Harga (Rp)</label><input type="number" id="totalHargaInput" oninput="hitungKuantitas()" min="1"></div>
+            </div>
+            <button type="button" class="btn btn-warning add-cart-btn" onclick="tambahKeKeranjang()"><i class="fas fa-plus-circle"></i> Tambah ke Keranjang</button>
+        </div>
+    </div>
+
+    <!-- 3. Keranjang Belanja (rincian produk) -->
+    <div class="card">
+        <div class="card-header"><h2><i class="fas fa-shopping-basket"></i> 3. Keranjang Belanja</h2></div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>Produk</th><th>Qty</th><th>Harga Satuan</th><th>Total</th><th>Aksi</th></tr></thead>
+                    <tbody id="tabelKeranjang"><tr><td colspan="5" style="text-align:center;">Keranjang kosong</td></tr></tbody>
+                </table>
+            </div>
+            <div class="grand-total-box">TOTAL BAYAR: Rp <span id="grandTotalKeranjang">0</span></div>
+            <button type="button" class="btn btn-success submit-btn" id="btnSimpan" onclick="simpanTransaksi()"><i class="fas fa-save"></i> Simpan & Selesaikan Transaksi</button>
+        </div>
+    </div>
+
+    <!-- 4. Riwayat Transaksi (dipindah ke sini, di atas laporan) -->
+    <div class="card">
+        <div class="card-header"><h3><i class="fas fa-history"></i> Riwayat Transaksi</h3></div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>Tanggal</th><th>Pelanggan</th><th>Item</th><th>Total</th><th>Aksi</th></tr></thead>
+                    <tbody id="tabelRiwayat"></tbody>
+                </table>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; background: #eef3fc; border-radius: 40px; padding: 12px 20px; flex-wrap: wrap; gap: 10px;">
+                <div><i class="fas fa-database"></i> <strong>Backup lokal</strong> tersimpan</div>
+                <button class="btn" style="background:#eef2fc; border-radius:30px;" onclick="eksporCSV()"><i class="fas fa-file-export"></i> Ekspor CSV Detail</button>
+                <div><i class="fas fa-cloud-upload-alt"></i> <a href="#" id="statusWebAppLink" target="_blank">Web App: Aktif</a></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Laporan Penjualan (dipindah ke bawah) -->
+    <div class="card">
+        <div class="card-header"><h2><i class="fas fa-chart-line"></i> Laporan Penjualan</h2></div>
+        <div class="card-body">
+            <div class="filter-bar">
+                <div class="form-group"><label>Dari Tanggal</label><input type="date" id="filterStart"></div>
+                <div class="form-group"><label>Sampai Tanggal</label><input type="date" id="filterEnd"></div>
+                <button class="btn btn-info" onclick="updateLaporan()"><i class="fas fa-filter"></i> Terapkan</button>
+                <button class="btn btn-secondary" onclick="resetFilter()"><i class="fas fa-undo-alt"></i> Reset</button>
+                <button class="btn btn-success" onclick="exportLaporanCSV()"><i class="fas fa-file-csv"></i> Ekspor Laporan</button>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><i class="fas fa-chart-simple"></i><div class="stat-value" id="totalPendapatan">0</div><div class="stat-label">Total Pendapatan</div></div>
+                <div class="stat-card"><i class="fas fa-exchange-alt"></i><div class="stat-value" id="totalTransaksi">0</div><div class="stat-label">Total Transaksi</div></div>
+                <div class="stat-card"><i class="fas fa-fish"></i><div class="stat-value" id="totalItemTerjual">0</div><div class="stat-label">Total Item Terjual</div></div>
+            </div>
+            <div class="table-responsive">
+                <table id="tabelLaporan">
+                    <thead><tr><th>Jenis Ikan</th><th>Total Kuantitas</th><th>Total Pendapatan</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="chart-container"><canvas id="chartPenjualan"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Area Nota untuk print -->
+<div id="areaNota">
+    <div class="nota-header"><h3>NOTA PENJUALAN BENIH IKAN</h3><p>Balai Benih Ikan Cimerak</p><p>DKPKP Kab. Pangandaran</p></div>
+    <div class="nota-row"><span>ID Nota</span> <span id="printId"></span></div>
+    <div class="nota-row"><span>Tanggal</span> <span id="printTanggal"></span></div>
+    <div class="nota-row"><span>Kasir</span> <span id="printPenjual"></span></div>
+    <div class="nota-row"><span>Pembeli</span> <span id="printPembeli"></span></div><br>
+    <div style="border-bottom:1px solid #000; margin-bottom:5px; font-weight:bold;">Pesanan:</div>
+    <div id="printDaftarBarang"></div>
+    <div class="nota-row" style="font-weight:bold; margin-top:5px;"><span>TOTAL:</span> <span id="printTotal"></span></div>
+    <div class="nota-footer"><p>Terima Kasih</p><p style="font-size:10px;">Benih yang sudah dibeli tidak dapat ditukar/dikembalikan.</p></div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-r9lDdtR7rPPOq81XUmaD-LGuA4jJ6D5Nz8wPqFourSWEhwmABx99QTUIZK_AieDG/exec';
+document.getElementById('statusWebAppLink').href = SCRIPT_URL;
+
+const tarifData = {
+    "Ikan Nila": [{ ukuran: "Benih 1-3 cm", harga: 50, satuan: "ekor" },{ ukuran: "Benih 3-5 cm", harga: 100, satuan: "ekor" },{ ukuran: "Benih 5-8 cm", harga: 125, satuan: "ekor" },{ ukuran: "Calon Induk 50-100 gram", harga: 3000000, satuan: "paket" },{ ukuran: "Calon Induk 100-200 gram", harga: 4000000, satuan: "paket" }],
+    "Ikan Mas": [{ ukuran: "Benih 1-3 cm", harga: 75, satuan: "ekor" },{ ukuran: "Benih 3-5 cm", harga: 100, satuan: "ekor" },{ ukuran: "Benih 5-8 cm", harga: 150, satuan: "ekor" },{ ukuran: "Calon Induk 100-200 gram", harga: 75000, satuan: "kg" }],
+    "Ikan Lele": [{ ukuran: "Benih 1-3 cm", harga: 50, satuan: "ekor" },{ ukuran: "Benih 3-5 cm", harga: 100, satuan: "ekor" },{ ukuran: "Benih 5-8 cm", harga: 175, satuan: "ekor" },{ ukuran: "Calon Induk 500-700 gram", harga: 500000, satuan: "paket" }],
+    "Ikan Gurame": [{ ukuran: "Benih 1 cm (kuku)", harga: 400, satuan: "ekor" },{ ukuran: "Benih 2 cm (jempol)", harga: 700, satuan: "ekor" },{ ukuran: "Benih 3 cm (silet)", harga: 1000, satuan: "ekor" },{ ukuran: "Benih 4 cm (korek)", harga: 2000, satuan: "ekor" },{ ukuran: "Benih 5-7 cm", harga: 3000, satuan: "ekor" },{ ukuran: "Benih 7-10 cm", harga: 5000, satuan: "ekor" },{ ukuran: "Calon Induk 500-700 gram", harga: 85000, satuan: "kg" },{ ukuran: "Telur", harga: 50, satuan: "butir" }],
+    "Ikan Patin": [{ ukuran: "Benih 3/4 inci", harga: 80, satuan: "ekor" },{ ukuran: "Benih 1,5 - 2 inci", harga: 150, satuan: "ekor" },{ ukuran: "Benih 2,5 - 3 inci", harga: 200, satuan: "ekor" },{ ukuran: "Larva Umur 1 Hari", harga: 7, satuan: "ekor" },{ ukuran: "Calon Induk 500-700 gram", harga: 60000, satuan: "kg" }],
+    "Ikan Tawes": [{ ukuran: "Benih 1-3 cm", harga: 75, satuan: "ekor" },{ ukuran: "Benih 3-5 cm", harga: 150, satuan: "ekor" },{ ukuran: "Benih 5-8 cm", harga: 250, satuan: "ekor" },{ ukuran: "Calon Induk 100-200 gram", harga: 60000, satuan: "kg" }],
+    "Ikan Nilem": [{ ukuran: "Benih 1-3 cm", harga: 75, satuan: "ekor" },{ ukuran: "Benih 3-5 cm", harga: 150, satuan: "ekor" },{ ukuran: "Benih 5-8 cm", harga: 250, satuan: "ekor" },{ ukuran: "Calon Induk 100-200 gram", harga: 60000, satuan: "kg" }]
+};
+
+let keranjangBelanja = [];
+let chartInstance = null;
+
+document.getElementById('tanggal').valueAsDate = new Date();
+
+function updateUkuran() {
+    let jenis = document.getElementById('jenisIkan').value;
+    let ukuranSelect = document.getElementById('ukuranIkan');
+    ukuranSelect.innerHTML = '<option value="">-- Pilih Ukuran --</option>';
+    if (jenis && tarifData[jenis]) {
+        tarifData[jenis].forEach((item, idx) => { ukuranSelect.innerHTML += `<option value="${idx}">${item.ukuran}</option>`; });
+    }
+    document.getElementById('hargaDasar').value = '';
+    document.getElementById('hargaDasarTampil').value = '';
+    document.getElementById('satuanSpan').innerText = 'Satuan';
+    document.getElementById('jumlah').value = '';
+    document.getElementById('totalHargaInput').value = '';
+}
+
+function updateHargaDanSatuan() {
+    let jenis = document.getElementById('jenisIkan').value;
+    let idx = document.getElementById('ukuranIkan').value;
+    if (jenis && idx !== "") {
+        let data = tarifData[jenis][idx];
+        document.getElementById('hargaDasar').value = data.harga;
+        document.getElementById('hargaDasarTampil').value = `Rp ${data.harga.toLocaleString('id-ID')} / ${data.satuan}`;
+        document.getElementById('satuanSpan').innerText = data.satuan;
+        hitungTotal();
+    } else {
+        document.getElementById('hargaDasar').value = '';
+        document.getElementById('hargaDasarTampil').value = '';
+        document.getElementById('satuanSpan').innerText = 'Satuan';
+        document.getElementById('jumlah').value = '';
+        document.getElementById('totalHargaInput').value = '';
+    }
+}
+
+function hitungTotal() {
+    let harga = parseInt(document.getElementById('hargaDasar').value) || 0;
+    let jml = parseInt(document.getElementById('jumlah').value) || 0;
+    if (harga > 0) {
+        let total = harga * jml;
+        if (document.activeElement === document.getElementById('jumlah')) {
+            document.getElementById('totalHargaInput').value = total;
+        }
+    }
+}
+
+function hitungKuantitas() {
+    let harga = parseInt(document.getElementById('hargaDasar').value) || 0;
+    let total = parseInt(document.getElementById('totalHargaInput').value) || 0;
+    if (harga > 0) {
+        let jml = Math.floor(total / harga);
+        if (document.activeElement === document.getElementById('totalHargaInput')) {
+            document.getElementById('jumlah').value = jml;
+        }
+    }
+}
+
+function tambahKeKeranjang() {
+    let jenis = document.getElementById('jenisIkan').value;
+    let idx = document.getElementById('ukuranIkan').value;
+    let jml = parseInt(document.getElementById('jumlah').value) || 0;
+    let totalHarga = parseInt(document.getElementById('totalHargaInput').value) || 0;
+    if (!jenis || idx === "" || jml <= 0 || totalHarga <= 0) {
+        alert("Lengkapi data produk (Jenis Ikan, Ukuran, dan Jumlah)!");
+        return;
+    }
+    let data = tarifData[jenis][idx];
+    keranjangBelanja.push({
+        jenis: jenis,
+        ukuranDetail: data.ukuran,
+        jumlah: jml,
+        satuan: data.satuan,
+        hargaDasar: data.harga,
+        total: totalHarga
+    });
+    tampilkanKeranjang();
+    document.getElementById('jenisIkan').value = '';
+    updateUkuran();
+    document.getElementById('jumlah').value = '';
+    document.getElementById('totalHargaInput').value = '';
+}
+
+function hapusItemKeranjang(index) {
+    keranjangBelanja.splice(index, 1);
+    tampilkanKeranjang();
+}
+
+function tampilkanKeranjang() {
+    let tbody = document.getElementById('tabelKeranjang');
+    let grandTotal = 0;
+    tbody.innerHTML = '';
+    if (keranjangBelanja.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Keranjang kosong</td></tr>';
+        document.getElementById('grandTotalKeranjang').innerText = '0';
+        return;
+    }
+    for (let i = 0; i < keranjangBelanja.length; i++) {
+        let item = keranjangBelanja[i];
+        let row = tbody.insertRow();
+        row.innerHTML = `
+            <td><strong>${item.jenis}</strong><br><small>${item.ukuranDetail}</small></td>
+            <td>${item.jumlah} ${item.satuan}</td>
+            <td>Rp ${item.hargaDasar.toLocaleString('id-ID')}</td>
+            <td>Rp ${item.total.toLocaleString('id-ID')}</td>
+            <td><button class="delete-btn" onclick="hapusItemKeranjang(${i})"><i class="fas fa-trash-alt"></i> Hapus</button></td>
+        `;
+        grandTotal += item.total;
+    }
+    document.getElementById('grandTotalKeranjang').innerText = grandTotal.toLocaleString('id-ID');
+}
+
+function ambilDataRiwayat() { 
+    let data = localStorage.getItem('dataRiwayatBBI_V3');
+    return data ? JSON.parse(data) : [];
+}
+
+function tampilkanRiwayat() {
+    let data = ambilDataRiwayat();
+    let tbody = document.getElementById('tabelRiwayat');
+    tbody.innerHTML = '';
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Belum ada transaksi</td></tr>';
+    } else {
+        for (let i = data.length - 1; i >= 0; i--) {
+            let trx = data[i];
+            let itemsHtml = trx.items.map(item => `• ${item.jenis} (${item.ukuranDetail}) : ${item.jumlah} ${item.satuan}`).join('<br>');
+            let row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${trx.tanggal}<br><small>ID: ${trx.id}</small></td>
+                <td>${trx.pembeli}</td>
+                <td style="font-size:12px;">${itemsHtml}</td>
+                <td style="font-weight:bold;color:#d9534f;">Rp ${trx.grandTotal.toLocaleString('id-ID')}</td>
+                <td class="action-btns">
+                    <button class="print-btn" onclick="cetakNota(${i})"><i class="fas fa-print"></i> Cetak</button>
+                    <button class="pdf-btn" onclick="unduhPDF(${i})"><i class="fas fa-file-pdf"></i> PDF</button>
+                    <button class="delete-btn" onclick="hapusRiwayat(${i})"><i class="fas fa-trash"></i> Hapus</button>
+                </td>
+            `;
+        }
+    }
+    updateLaporan();
+}
+
+async function simpanTransaksi() {
+    if (keranjangBelanja.length === 0) {
+        alert("Keranjang masih kosong!");
+        return;
+    }
+    let tgl = document.getElementById('tanggal').value;
+    let penjual = document.getElementById('namaPenjual').value;
+    let pembeli = document.getElementById('namaPembeli').value;
+    if (!tgl || !penjual || !pembeli) {
+        alert("Isi tanggal, kasir, dan pembeli!");
+        return;
+    }
+    let btn = document.getElementById('btnSimpan');
+    btn.innerText = '⏳ Mengirim...';
+    btn.disabled = true;
+    let grandTotal = keranjangBelanja.reduce((sum, item) => sum + item.total, 0);
+    let idTransaksi = 'TRX-' + Date.now().toString().slice(-6);
+    let errorCount = 0;
+    for (let item of keranjangBelanja) {
+        let formData = new FormData();
+        formData.append('id', idTransaksi);
+        formData.append('tanggal', tgl);
+        formData.append('penjual', penjual);
+        formData.append('pembeli', pembeli);
+        formData.append('jenis', item.jenis);
+        formData.append('ukuranDetail', item.ukuranDetail);
+        formData.append('jumlah', item.jumlah);
+        formData.append('satuan', item.satuan);
+        formData.append('hargaDasar', item.hargaDasar);
+        formData.append('total', item.total);
+        try {
+            await fetch(SCRIPT_URL, { method: 'POST', body: formData });
+        } catch(e) {
+            errorCount++;
+        }
+    }
+    if (errorCount > 0) {
+        alert("Gagal kirim ke spreadsheet, data tetap tersimpan lokal.");
+    }
+    let transaksiBaru = {
+        id: idTransaksi,
+        tanggal: tgl,
+        penjual: penjual,
+        pembeli: pembeli,
+        items: [...keranjangBelanja],
+        grandTotal: grandTotal
+    };
+    let dataRiwayat = ambilDataRiwayat();
+    dataRiwayat.push(transaksiBaru);
+    localStorage.setItem('dataRiwayatBBI_V3', JSON.stringify(dataRiwayat));
+    keranjangBelanja = [];
+    tampilkanKeranjang();
+    document.getElementById('namaPembeli').value = '';
+    btn.innerText = '✅ Simpan & Selesaikan Transaksi';
+    btn.disabled = false;
+    tampilkanRiwayat();
+}
+
+function hapusRiwayat(index) {
+    let data = ambilDataRiwayat();
+    if (confirm('Hapus riwayat transaksi ini?')) {
+        data.splice(index, 1);
+        localStorage.setItem('dataRiwayatBBI_V3', JSON.stringify(data));
+        tampilkanRiwayat();
+    }
+}
+
+function siapkanDataStruk(index) {
+    let data = ambilDataRiwayat();
+    let trx = data[index];
+    if (!trx) return null;
+    document.getElementById('printId').innerText = trx.id;
+    document.getElementById('printTanggal').innerText = trx.tanggal;
+    document.getElementById('printPenjual').innerText = trx.penjual;
+    document.getElementById('printPembeli').innerText = trx.pembeli;
+    let container = document.getElementById('printDaftarBarang');
+    container.innerHTML = '';
+    trx.items.forEach(item => {
+        let div = document.createElement('div');
+        div.className = 'nota-item';
+        div.innerHTML = `
+            <div class="nota-item-title">${item.jenis} - ${item.ukuranDetail}</div>
+            <div class="nota-item-detail">
+                <span>${item.jumlah} ${item.satuan} x Rp ${item.hargaDasar.toLocaleString('id-ID')}</span>
+                <span>Rp ${item.total.toLocaleString('id-ID')}</span>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    document.getElementById('printTotal').innerHTML = `Rp ${trx.grandTotal.toLocaleString('id-ID')}`;
+    return trx;
+}
+
+function cetakNota(index) {
+    if (siapkanDataStruk(index)) {
+        window.print();
+    } else {
+        alert("Data tidak ditemukan");
+    }
+}
+
+async function unduhPDF(index) {
+    let data = ambilDataRiwayat();
+    let trx = data[index];
+    if (!trx) {
+        alert("Data tidak ditemukan");
+        return;
+    }
+    const pdfElement = document.createElement('div');
+    pdfElement.style.position = 'fixed';
+    pdfElement.style.left = '-9999px';
+    pdfElement.style.top = '0';
+    pdfElement.style.width = '300px';
+    pdfElement.style.padding = '10px';
+    pdfElement.style.backgroundColor = 'white';
+    pdfElement.style.fontFamily = "'Courier New', Courier, monospace";
+    pdfElement.style.zIndex = '-1';
+    pdfElement.innerHTML = `
+        <div style="text-align:center; border-bottom:2px dashed #000; padding-bottom:6px; margin-bottom:8px;">
+            <h3 style="margin:0; font-size:14px;">NOTA PENJUALAN BENIH IKAN</h3>
+            <p style="margin:3px 0; font-size:10px;">Balai Benih Ikan Cimerak</p>
+            <p style="margin:3px 0; font-size:10px;">DKPKP Kab. Pangandaran</p>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11px;"><span>ID Nota</span><span>${trx.id}</span></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11px;"><span>Tanggal</span><span>${trx.tanggal}</span></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11px;"><span>Kasir</span><span>${trx.penjual}</span></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px;"><span>Pembeli</span><span>${trx.pembeli}</span></div>
+        <div style="border-bottom:1px solid #000; margin-bottom:5px; font-weight:bold;">Pesanan:</div>
+        <div id="pdfItemList"></div>
+        <div style="display:flex; justify-content:space-between; font-weight:bold; margin-top:5px;"><span>TOTAL:</span><span>Rp ${trx.grandTotal.toLocaleString('id-ID')}</span></div>
+        <div style="text-align:center; border-top:2px dashed #000; padding-top:6px; margin-top:8px;"><p>Terima Kasih</p><p style="font-size:10px;">Benih yang sudah dibeli tidak dapat ditukar/dikembalikan.</p></div>
+    `;
+    let itemContainer = pdfElement.querySelector('#pdfItemList');
+    trx.items.forEach(item => {
+        let div = document.createElement('div');
+        div.style.marginBottom = '5px';
+        div.style.fontSize = '11px';
+        div.innerHTML = `
+            <div style="font-weight:bold;">${item.jenis} - ${item.ukuranDetail}</div>
+            <div style="display:flex; justify-content:space-between; padding-left:5px;">
+                <span>${item.jumlah} ${item.satuan} x Rp ${item.hargaDasar.toLocaleString('id-ID')}</span>
+                <span>Rp ${item.total.toLocaleString('id-ID')}</span>
+            </div>
+        `;
+        itemContainer.appendChild(div);
+    });
+    document.body.appendChild(pdfElement);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    try {
+        const canvas = await html2canvas(pdfElement, { scale: 2, backgroundColor: '#ffffff' });
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const imgWidth = 80;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let pdf = new jsPDF({ unit: 'mm', format: [imgWidth + 4, Math.max(80, imgHeight + 10)], orientation: 'portrait' });
+        pdf.addImage(imgData, 'PNG', 2, 2, imgWidth, imgHeight);
+        pdf.save(`Nota_BBI_${trx.id}.pdf`);
+    } catch(err) {
+        alert("Gagal PDF: " + err.message);
+    } finally {
+        document.body.removeChild(pdfElement);
+    }
+}
+
+function eksporCSV() {
+    let data = ambilDataRiwayat();
+    if (data.length === 0) {
+        alert("Belum ada data");
+        return;
+    }
+    let csv = "\uFEFFTanggal,ID Transaksi,Pembeli,Kasir,Jenis Ikan,Ukuran,Kuantitas,Satuan,Harga Satuan,Total Harga\n";
+    data.forEach(trx => {
+        trx.items.forEach(item => {
+            csv += `"${trx.tanggal}","${trx.id}","${trx.pembeli}","${trx.penjual}","${item.jenis}","${item.ukuranDetail}",${item.jumlah},"${item.satuan}",${item.hargaDasar},${item.total}\n`;
+        });
+    });
+    let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    let a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Backup_BBI_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+// Laporan
+function getFilteredTransactions() {
+    let all = ambilDataRiwayat();
+    let start = document.getElementById('filterStart').value;
+    let end = document.getElementById('filterEnd').value;
+    if (!start && !end) return all;
+    return all.filter(trx => {
+        if (start && trx.tanggal < start) return false;
+        if (end && trx.tanggal > end) return false;
+        return true;
+    });
+}
+
+function updateLaporan() {
+    let filtered = getFilteredTransactions();
+    let summary = {};
+    let totalPendapatan = 0;
+    let totalItem = 0;
+    filtered.forEach(trx => {
+        totalPendapatan += trx.grandTotal;
+        trx.items.forEach(item => {
+            let jenis = item.jenis;
+            if (!summary[jenis]) summary[jenis] = { kuantitas: 0, pendapatan: 0 };
+            summary[jenis].kuantitas += item.jumlah;
+            summary[jenis].pendapatan += item.total;
+            totalItem += item.jumlah;
+        });
+    });
+    document.getElementById('totalPendapatan').innerText = totalPendapatan.toLocaleString('id-ID');
+    document.getElementById('totalTransaksi').innerText = filtered.length;
+    document.getElementById('totalItemTerjual').innerText = totalItem.toLocaleString('id-ID');
+    let tbody = document.querySelector('#tabelLaporan tbody');
+    tbody.innerHTML = '';
+    let labels = [];
+    let dataPendapatan = [];
+    let sortedJenis = Object.keys(summary).sort();
+    for (let jenis of sortedJenis) {
+        let val = summary[jenis];
+        tbody.innerHTML += `<tr><td>${jenis}</td><td>${val.kuantitas.toLocaleString('id-ID')}</td><td>Rp ${val.pendapatan.toLocaleString('id-ID')}</td></tr>`;
+        labels.push(jenis);
+        dataPendapatan.push(val.pendapatan);
+    }
+    if (chartInstance) chartInstance.destroy();
+    let ctx = document.getElementById('chartPenjualan').getContext('2d');
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Pendapatan (Rp)', data: dataPendapatan, backgroundColor: '#2a9d8f', borderRadius: 8 }] },
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: (ctx) => `Rp ${ctx.raw.toLocaleString('id-ID')}` } } }, scales: { y: { beginAtZero: true, ticks: { callback: (val) => 'Rp ' + val.toLocaleString('id-ID') } } } }
+    });
+}
+
+function resetFilter() {
+    document.getElementById('filterStart').value = '';
+    document.getElementById('filterEnd').value = '';
+    updateLaporan();
+}
+
+function exportLaporanCSV() {
+    let filtered = getFilteredTransactions();
+    if (filtered.length === 0) {
+        alert("Tidak ada data untuk periode yang dipilih.");
+        return;
+    }
+    let summary = {};
+    filtered.forEach(trx => {
+        trx.items.forEach(item => {
+            let j = item.jenis;
+            if (!summary[j]) summary[j] = { kuantitas: 0, pendapatan: 0 };
+            summary[j].kuantitas += item.jumlah;
+            summary[j].pendapatan += item.total;
+        });
+    });
+    let totalPendapatan = filtered.reduce((s, trx) => s + trx.grandTotal, 0);
+    let totalTransaksi = filtered.length;
+    let totalItem = Object.values(summary).reduce((s, v) => s + v.kuantitas, 0);
+    let rows = [
+        "Laporan Penjualan BBI Cimerak",
+        `Periode: ${document.getElementById('filterStart').value || 'Awal'} s.d. ${document.getElementById('filterEnd').value || 'Akhir'}`,
+        "",
+        `Total Pendapatan,Rp ${totalPendapatan.toLocaleString('id-ID')}`,
+        `Total Transaksi,${totalTransaksi}`,
+        `Total Item Terjual,${totalItem}`,
+        "",
+        "Jenis Ikan,Total Kuantitas,Total Pendapatan (Rp)"
+    ];
+    for (let [jenis, val] of Object.entries(summary)) {
+        rows.push(`${jenis},${val.kuantitas},${val.pendapatan}`);
+    }
+    let blob = new Blob(["\uFEFF" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
+    let a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Laporan_BBI_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+tampilkanRiwayat();
+</script>
+</body>
+</html>
