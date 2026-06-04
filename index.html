@@ -141,10 +141,16 @@
         </div>
     </div>
 
-    <!-- 5. Laporan Penjualan (dipindah ke bawah) -->
+    <!-- 5. Laporan Penjualan -->
     <div class="card">
-        <div class="card-header"><h2><i class="fas fa-chart-line"></i> Laporan Penjualan</h2></div>
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <h2 style="margin:0;"><i class="fas fa-chart-line"></i> Laporan Penjualan</h2>
+            <button class="btn" id="btnRefreshLaporan" onclick="muatDataSpreadsheet()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.5);padding:8px 18px;font-size:0.85rem;">
+                <i class="fas fa-sync-alt"></i> Muat dari Spreadsheet
+            </button>
+        </div>
         <div class="card-body">
+            <div id="statusLaporan" style="display:none;padding:12px 16px;border-radius:16px;margin-bottom:16px;font-size:0.9rem;"></div>
             <div class="filter-bar">
                 <div class="form-group"><label>Dari Tanggal</label><input type="date" id="filterStart"></div>
                 <div class="form-group"><label>Sampai Tanggal</label><input type="date" id="filterEnd"></div>
@@ -153,9 +159,9 @@
                 <button class="btn btn-success" onclick="exportLaporanCSV()"><i class="fas fa-file-csv"></i> Ekspor Laporan</button>
             </div>
             <div class="stats-grid">
-                <div class="stat-card"><i class="fas fa-chart-simple"></i><div class="stat-value" id="totalPendapatan">0</div><div class="stat-label">Total Pendapatan</div></div>
+                <div class="stat-card"><i class="fas fa-chart-simple"></i><div class="stat-value" id="totalPendapatan" style="font-size:1.3rem;">Rp 0</div><div class="stat-label">Total Pendapatan</div></div>
                 <div class="stat-card"><i class="fas fa-exchange-alt"></i><div class="stat-value" id="totalTransaksi">0</div><div class="stat-label">Total Transaksi</div></div>
-                <div class="stat-card"><i class="fas fa-fish"></i><div class="stat-value" id="totalItemTerjual">0</div><div class="stat-label">Total Item Terjual</div></div>
+                <div class="stat-card"><i class="fas fa-fish"></i><div class="stat-value" id="totalItemTerjual" style="font-size:1.3rem;">0</div><div class="stat-label">Total Item Terjual</div></div>
             </div>
             <div class="table-responsive">
                 <table id="tabelLaporan">
@@ -306,6 +312,7 @@ function tampilkanKeranjang() {
         grandTotal += item.total;
     }
     document.getElementById('grandTotalKeranjang').innerText = grandTotal.toLocaleString('id-ID');
+    // Catatan: updateLaporan() TIDAK dipanggil di sini agar tidak override data laporan
 }
 
 function ambilDataRiwayat() { 
@@ -524,55 +531,169 @@ function eksporCSV() {
     URL.revokeObjectURL(a.href);
 }
 
-// Laporan
+// =============================================
+// LAPORAN - Data dari Google Spreadsheet
+// =============================================
+let dataSpreadsheet = []; // cache data dari GSheet
+
+function tampilStatusLaporan(pesan, tipe = 'info') {
+    let el = document.getElementById('statusLaporan');
+    let warna = { info: '#dbeafe', sukses: '#d1fae5', error: '#fee2e2', loading: '#fef9c3' };
+    let ikon = { info: 'ℹ️', sukses: '✅', error: '❌', loading: '⏳' };
+    el.style.display = 'block';
+    el.style.background = warna[tipe] || '#dbeafe';
+    el.innerHTML = `${ikon[tipe] || ''} ${pesan}`;
+}
+
+function sembunyikanStatus() {
+    document.getElementById('statusLaporan').style.display = 'none';
+}
+
+async function muatDataSpreadsheet() {
+    let btn = document.getElementById('btnRefreshLaporan');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat...';
+    btn.disabled = true;
+    tampilStatusLaporan('Mengambil data dari Google Spreadsheet...', 'loading');
+    try {
+        let res = await fetch(SCRIPT_URL, { method: 'GET' });
+        let json = await res.json();
+        if (json.status !== 'ok') throw new Error(json.message || 'Respons tidak valid');
+        dataSpreadsheet = json.data || [];
+        tampilStatusLaporan(`Berhasil memuat <strong>${dataSpreadsheet.length} baris data</strong> dari spreadsheet.`, 'sukses');
+        updateLaporan();
+        setTimeout(sembunyikanStatus, 4000);
+    } catch(err) {
+        tampilStatusLaporan(`Gagal memuat data: ${err.message}. Pastikan Apps Script sudah di-deploy ulang dengan fungsi doGet().`, 'error');
+    } finally {
+        btn.innerHTML = '<i class="fas fa-sync-alt"></i> Muat dari Spreadsheet';
+        btn.disabled = false;
+    }
+}
+
+// Konversi flat rows dari spreadsheet menjadi struktur transaksi yang sama dengan localStorage
+function konversiKeTransaksi(rows) {
+    let map = {};
+    rows.forEach(row => {
+        let id = row.id || '';
+        let tgl = typeof row.tanggal === 'object' ? row.tanggal.toString().slice(0,10) : String(row.tanggal).slice(0,10);
+        if (!map[id]) {
+            map[id] = {
+                id: id,
+                tanggal: tgl,
+                penjual: row.penjual || '',
+                pembeli: row.pembeli || '',
+                items: [],
+                grandTotal: 0
+            };
+        }
+        let itemTotal = parseFloat(row.total) || 0;
+        map[id].items.push({
+            jenis: row.jenis || '',
+            ukuranDetail: row.ukuranDetail || '',
+            jumlah: parseFloat(row.jumlah) || 0,
+            satuan: row.satuan || '',
+            hargaDasar: parseFloat(row.hargaDasar) || 0,
+            total: itemTotal
+        });
+        map[id].grandTotal += itemTotal;
+    });
+    return Object.values(map);
+}
+
 function getFilteredTransactions() {
-    let all = ambilDataRiwayat();
+    // Gunakan data spreadsheet jika sudah dimuat, fallback ke localStorage
+    let sumber = dataSpreadsheet.length > 0 ? konversiKeTransaksi(dataSpreadsheet) : ambilDataRiwayat();
     let start = document.getElementById('filterStart').value;
     let end = document.getElementById('filterEnd').value;
-    if (!start && !end) return all;
-    return all.filter(trx => {
-        if (start && trx.tanggal < start) return false;
-        if (end && trx.tanggal > end) return false;
+    if (!start && !end) return sumber;
+    return sumber.filter(trx => {
+        let tgl = trx.tanggal ? trx.tanggal.slice(0,10) : '';
+        if (start && tgl < start) return false;
+        if (end && tgl > end) return false;
         return true;
     });
 }
 
 function updateLaporan() {
+    let sumberSemua = dataSpreadsheet.length > 0 ? konversiKeTransaksi(dataSpreadsheet) : ambilDataRiwayat();
     let filtered = getFilteredTransactions();
+    let start = document.getElementById('filterStart').value;
+    let end = document.getElementById('filterEnd').value;
+
     let summary = {};
     let totalPendapatan = 0;
     let totalItem = 0;
     filtered.forEach(trx => {
-        totalPendapatan += trx.grandTotal;
+        totalPendapatan += Number(trx.grandTotal) || 0;
         trx.items.forEach(item => {
             let jenis = item.jenis;
             if (!summary[jenis]) summary[jenis] = { kuantitas: 0, pendapatan: 0 };
-            summary[jenis].kuantitas += item.jumlah;
-            summary[jenis].pendapatan += item.total;
-            totalItem += item.jumlah;
+            summary[jenis].kuantitas += Number(item.jumlah) || 0;
+            summary[jenis].pendapatan += Number(item.total) || 0;
+            totalItem += Number(item.jumlah) || 0;
         });
     });
-    document.getElementById('totalPendapatan').innerText = totalPendapatan.toLocaleString('id-ID');
+
+    document.getElementById('totalPendapatan').innerText = 'Rp ' + totalPendapatan.toLocaleString('id-ID');
     document.getElementById('totalTransaksi').innerText = filtered.length;
     document.getElementById('totalItemTerjual').innerText = totalItem.toLocaleString('id-ID');
+
+    let sumberLabel = dataSpreadsheet.length > 0
+        ? `<span style="color:#1e8f5e;font-weight:600;"><i class="fas fa-table"></i> Sumber: Google Spreadsheet (${sumberSemua.length} transaksi)</span>`
+        : `<span style="color:#e76f51;font-weight:600;"><i class="fas fa-database"></i> Sumber: Data Lokal</span>`;
+    let periodeLabel = (start || end)
+        ? ` &nbsp;|&nbsp; Periode: <strong>${start || 'Awal'}</strong> s.d. <strong>${end || 'Sekarang'}</strong> — ${filtered.length} transaksi`
+        : ` &nbsp;|&nbsp; Semua periode — ${filtered.length} transaksi`;
+
+    let infoDiv = document.getElementById('laporanPeriodeInfo');
+    if (!infoDiv) {
+        infoDiv = document.createElement('div');
+        infoDiv.id = 'laporanPeriodeInfo';
+        document.querySelector('#tabelLaporan').parentNode.insertBefore(infoDiv, document.querySelector('#tabelLaporan'));
+    }
+    infoDiv.style.cssText = 'font-size:0.82rem;color:#555;margin-bottom:10px;padding:8px 14px;background:#f0f7fc;border-radius:12px;';
+    infoDiv.innerHTML = sumberLabel + periodeLabel;
+
     let tbody = document.querySelector('#tabelLaporan tbody');
     tbody.innerHTML = '';
-    let labels = [];
-    let dataPendapatan = [];
+    let labels = [], dataPendapatan = [];
     let sortedJenis = Object.keys(summary).sort();
-    for (let jenis of sortedJenis) {
-        let val = summary[jenis];
-        tbody.innerHTML += `<tr><td>${jenis}</td><td>${val.kuantitas.toLocaleString('id-ID')}</td><td>Rp ${val.pendapatan.toLocaleString('id-ID')}</td></tr>`;
-        labels.push(jenis);
-        dataPendapatan.push(val.pendapatan);
+
+    if (sortedJenis.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#aaa;padding:20px;">Tidak ada data untuk periode ini</td></tr>';
+    } else {
+        for (let jenis of sortedJenis) {
+            let val = summary[jenis];
+            tbody.innerHTML += `<tr>
+                <td>${jenis}</td>
+                <td style="text-align:right;">${val.kuantitas.toLocaleString('id-ID')}</td>
+                <td style="text-align:right;font-weight:600;color:#0a4b6e;">Rp ${val.pendapatan.toLocaleString('id-ID')}</td>
+            </tr>`;
+            labels.push(jenis);
+            dataPendapatan.push(val.pendapatan);
+        }
+        tbody.innerHTML += `<tr style="background:#e6f4f1;font-weight:800;border-top:2px solid #2a9d8f;">
+            <td>TOTAL</td>
+            <td style="text-align:right;">${totalItem.toLocaleString('id-ID')}</td>
+            <td style="text-align:right;color:#c44536;">Rp ${totalPendapatan.toLocaleString('id-ID')}</td>
+        </tr>`;
     }
+
     if (chartInstance) chartInstance.destroy();
-    let ctx = document.getElementById('chartPenjualan').getContext('2d');
-    chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels, datasets: [{ label: 'Pendapatan (Rp)', data: dataPendapatan, backgroundColor: '#2a9d8f', borderRadius: 8 }] },
-        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: (ctx) => `Rp ${ctx.raw.toLocaleString('id-ID')}` } } }, scales: { y: { beginAtZero: true, ticks: { callback: (val) => 'Rp ' + val.toLocaleString('id-ID') } } } }
-    });
+    chartInstance = null;
+    if (labels.length > 0) {
+        let ctx = document.getElementById('chartPenjualan').getContext('2d');
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Pendapatan (Rp)', data: dataPendapatan, backgroundColor: ['#2a9d8f','#1b7aaa','#264653','#e9c46a','#f4a261','#e76f51','#a8dadc'], borderRadius: 8 }] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => 'Rp ' + ctx.raw.toLocaleString('id-ID') } } },
+                scales: { y: { beginAtZero: true, ticks: { callback: val => 'Rp ' + val.toLocaleString('id-ID') } } }
+            }
+        });
+    }
 }
 
 function resetFilter() {
@@ -583,10 +704,7 @@ function resetFilter() {
 
 function exportLaporanCSV() {
     let filtered = getFilteredTransactions();
-    if (filtered.length === 0) {
-        alert("Tidak ada data untuk periode yang dipilih.");
-        return;
-    }
+    if (filtered.length === 0) { alert("Tidak ada data untuk periode yang dipilih."); return; }
     let summary = {};
     filtered.forEach(trx => {
         trx.items.forEach(item => {
@@ -597,14 +715,17 @@ function exportLaporanCSV() {
         });
     });
     let totalPendapatan = filtered.reduce((s, trx) => s + trx.grandTotal, 0);
-    let totalTransaksi = filtered.length;
     let totalItem = Object.values(summary).reduce((s, v) => s + v.kuantitas, 0);
+    let start = document.getElementById('filterStart').value;
+    let end = document.getElementById('filterEnd').value;
+    let sumber = dataSpreadsheet.length > 0 ? 'Google Spreadsheet' : 'Data Lokal';
     let rows = [
         "Laporan Penjualan BBI Cimerak",
-        `Periode: ${document.getElementById('filterStart').value || 'Awal'} s.d. ${document.getElementById('filterEnd').value || 'Akhir'}`,
+        `Sumber Data: ${sumber}`,
+        `Periode: ${start || 'Awal'} s.d. ${end || 'Akhir'}`,
         "",
         `Total Pendapatan,Rp ${totalPendapatan.toLocaleString('id-ID')}`,
-        `Total Transaksi,${totalTransaksi}`,
+        `Total Transaksi,${filtered.length}`,
         `Total Item Terjual,${totalItem}`,
         "",
         "Jenis Ikan,Total Kuantitas,Total Pendapatan (Rp)"
@@ -621,6 +742,7 @@ function exportLaporanCSV() {
 }
 
 tampilkanRiwayat();
+// Laporan tidak otomatis dimuat - klik "Muat dari Spreadsheet" untuk mengambil data terbaru
 </script>
 </body>
 </html>
